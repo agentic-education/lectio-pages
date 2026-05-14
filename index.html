@@ -113,6 +113,73 @@ section { padding: 80px 24px; }
 .stat-label { font-size: 12px; color: var(--muted); margin-top: 8px; text-transform: uppercase; letter-spacing: 0.1em; font-family: 'Inter', sans-serif; font-weight: 600; }
 @media (max-width: 600px) { .stats-grid { grid-template-columns: repeat(2, 1fr); gap: 32px; } }
 
+/* Today's Column — 실콘텐츠 미리보기. fetch 실패/미발행 시 .hidden 유지하여 silent. */
+.today-column { padding: 64px 24px; }
+.today-column .container { max-width: 780px; }
+.today-column-card {
+  background: #fff;
+  border: 1px solid var(--line);
+  border-radius: 20px;
+  padding: 36px 32px 32px;
+  box-shadow: 0 4px 24px rgba(42, 32, 24, 0.04);
+  border-top: 4px solid var(--gold);
+}
+.today-column-label {
+  font-family: 'Inter', sans-serif; font-size: 11px; font-weight: 700;
+  letter-spacing: 0.22em; text-transform: uppercase; color: var(--gold);
+  margin-bottom: 14px;
+}
+.today-column-meta {
+  font-family: 'Inter', sans-serif; font-size: 11px; font-weight: 600;
+  letter-spacing: 0.12em; color: var(--muted);
+  margin-bottom: 10px;
+}
+.today-column-title-en {
+  font-family: 'Lora', serif; font-size: clamp(20px, 3vw, 26px); font-weight: 700;
+  color: var(--ink); line-height: 1.3; margin-bottom: 4px; letter-spacing: -0.005em;
+}
+.today-column-title-ko {
+  font-family: 'Noto Serif KR', serif; font-size: clamp(16px, 2.2vw, 19px);
+  font-weight: 700; color: var(--ink-soft); margin-bottom: 18px;
+}
+.today-column-levels { display: flex; gap: 6px; margin-bottom: 22px; flex-wrap: wrap; }
+.today-column-level {
+  padding: 6px 14px; border-radius: 999px;
+  background: var(--cream-deep); color: var(--muted);
+  font-family: 'Inter', sans-serif; font-size: 11px; font-weight: 700;
+  letter-spacing: 0.05em;
+  border: 1px solid var(--line);
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s, border-color 0.15s;
+}
+.today-column-level:hover { color: var(--ink); }
+.today-column-level.active {
+  background: var(--ink); color: var(--cream); border-color: var(--ink);
+}
+.today-column-preview { display: grid; gap: 14px; margin-bottom: 24px; }
+.today-column-row { display: grid; grid-template-columns: 1fr 1fr; gap: 18px; }
+.today-column-row p { font-size: 14.5px; line-height: 1.7; margin: 0; }
+.today-column-row .en { font-family: 'Lora', serif; color: var(--ink); }
+.today-column-row .ko { font-family: 'Noto Serif KR', serif; color: var(--ink-soft); }
+@media (max-width: 600px) {
+  .today-column-row { grid-template-columns: 1fr; gap: 6px; }
+  .today-column-row .ko { font-size: 13.5px; color: var(--muted); }
+}
+.today-column-cta {
+  display: inline-flex; align-items: center; gap: 8px;
+  padding: 11px 20px; border-radius: 999px;
+  background: var(--ink); color: var(--cream);
+  font-family: 'Inter', sans-serif; font-size: 13px; font-weight: 700;
+  text-decoration: none; letter-spacing: 0.02em;
+  transition: transform 0.15s, box-shadow 0.15s;
+}
+.today-column-cta:hover { transform: translateY(-1px); box-shadow: 0 8px 20px rgba(42, 32, 24, 0.18); }
+.today-column-cta-note {
+  font-family: 'Inter', sans-serif; font-size: 11px; color: var(--muted);
+  margin-left: 12px;
+}
+.today-column.hidden { display: none; }
+
 /* Why */
 .why h2 { font-family: 'Noto Serif KR', serif; font-size: clamp(28px, 4.5vw, 38px); font-weight: 900; text-align: center; margin-bottom: 12px; letter-spacing: -0.01em; }
 .why .sub { text-align: center; color: var(--muted); max-width: 540px; margin: 0 auto 56px; }
@@ -215,6 +282,21 @@ footer a:hover { color: var(--ink); text-decoration: underline; }
     <div><span class="stat-num">9</span><div class="stat-label">Languages</div></div>
   </div>
 </div>
+
+<!-- 오늘의 칼럼 — jsDelivr 의 ikda-columns 최신 1편 (Lv.3) 미리보기.
+     fetch 실패 / 발행물 없음 시 silent (섹션 자체 숨김). -->
+<section class="today-column hidden" id="today-column">
+  <div class="container">
+    <div class="today-column-card">
+      <div class="today-column-label">오늘의 칼럼 · Today's Column</div>
+      <div class="today-column-meta" id="tc-meta"></div>
+      <h2 class="today-column-title-en" id="tc-title-en"></h2>
+      <p class="today-column-title-ko ko" id="tc-title-ko"></p>
+      <div class="today-column-levels" id="tc-levels"></div>
+      <div class="today-column-preview" id="tc-preview"></div>
+    </div>
+  </div>
+</section>
 
 <section class="why" id="why">
   <div class="container">
@@ -326,16 +408,190 @@ footer a:hover { color: var(--ink); text-decoration: underline; }
 </footer>
 
 <script>
-// Reveal on scroll
-var io = new IntersectionObserver(function (entries) {
-  entries.forEach(function (e) {
-    if (e.isIntersecting) {
-      e.target.classList.add('in')
-      io.unobserve(e.target)
+// Reveal on scroll — ES5-safe + SES/lockdown 방어.
+// MetaMask 같은 wallet 확장이 SES 를 inject 하면 IntersectionObserver.prototype 의 메서드를
+// 제거할 수 있어 `io.observe is not a function` throw → 그 다음 스크립트가 전부 중단됨.
+// try/catch 로 격리하고, IntersectionObserver 못 쓰면 모두 즉시 visible 로 fallback.
+(function () {
+  var revealEls = document.querySelectorAll('.reveal')
+  function revealAll() {
+    for (var i = 0; i < revealEls.length; i++) revealEls[i].classList.add('in')
+  }
+  try {
+    if (typeof IntersectionObserver === 'undefined') return revealAll()
+    var io = new IntersectionObserver(function (entries) {
+      for (var i = 0; i < entries.length; i++) {
+        var e = entries[i]
+        if (e.isIntersecting) {
+          e.target.classList.add('in')
+          try { io.unobserve(e.target) } catch (_) { /* SES hardened */ }
+        }
+      }
+    }, { threshold: 0.12 })
+    if (!io || typeof io.observe !== 'function') return revealAll()
+    for (var ri = 0; ri < revealEls.length; ri++) io.observe(revealEls[ri])
+  } catch (_) {
+    revealAll()
+  }
+})();
+
+// 오늘의 칼럼 — jsDelivr 의 ikda-columns 에서 가장 최신 발행물 (publishDate <= 오늘) Lv.3 fetch.
+// 실패해도 silent — hidden 클래스 유지로 섹션 자체 사라짐. 랜딩 페이지에서 에러 메시지는 부적절.
+;(function () {
+  var CDN = 'https://cdn.jsdelivr.net/gh/ykmaeng/ikda-columns@master'
+  var section = document.getElementById('today-column')
+  if (!section) return
+
+  // 로컬 자정 기준 YYYY-MM-DD
+  function todayStr() {
+    var d = new Date()
+    var m = d.getMonth() + 1
+    var day = d.getDate()
+    return d.getFullYear() + '-' + (m < 10 ? '0' : '') + m + '-' + (day < 10 ? '0' : '') + day
+  }
+
+  // 단락 첫 2개만 자르되, 너무 길면 한 단락만
+  function pickPreview(paragraphs, translation) {
+    if (!paragraphs || !paragraphs.length) return []
+    var n = (paragraphs[0] && paragraphs[0].length > 140) ? 1 : 2
+    var out = []
+    for (var i = 0; i < Math.min(n, paragraphs.length); i++) {
+      out.push({
+        en: paragraphs[i] || '',
+        ko: (translation && translation[i]) ? translation[i] : ''
+      })
     }
-  })
-}, { threshold: 0.12 })
-document.querySelectorAll('.reveal').forEach(function (el) { io.observe(el) })
+    return out
+  }
+
+  function setText(id, text) {
+    var el = document.getElementById(id)
+    if (el) el.textContent = text
+  }
+
+  function clearChildren(node) {
+    while (node.firstChild) node.removeChild(node.firstChild)
+  }
+
+  function findByLevel(passages, level) {
+    for (var i = 0; i < passages.length; i++) {
+      if (passages[i].level === level) return passages[i]
+    }
+    return null
+  }
+
+  function renderLevels(passages, currentLevel, publishDate) {
+    var wrap = document.getElementById('tc-levels')
+    if (!wrap) return
+    clearChildren(wrap)
+    for (var lv = 1; lv <= 6; lv++) {
+      var btn = document.createElement('button')
+      btn.type = 'button'
+      btn.className = 'today-column-level' + (lv === currentLevel ? ' active' : '')
+      btn.textContent = 'Lv.' + lv
+      var hasLevel = !!findByLevel(passages, lv)
+      if (!hasLevel) {
+        btn.disabled = true
+        btn.style.opacity = '0.4'
+        btn.style.cursor = 'not-allowed'
+      } else {
+        // IIFE 로 lv capture
+        ;(function (level) {
+          btn.onclick = function () {
+            var pick = findByLevel(passages, level)
+            if (pick) renderPassage(pick, passages, publishDate)
+          }
+        })(lv)
+      }
+      wrap.appendChild(btn)
+    }
+  }
+
+  function renderPassage(col, passages, publishDate) {
+    setText('tc-meta', (publishDate || '') + ' · 6단계 레벨 — 탭해서 전환')
+    setText('tc-title-en', col.title || '')
+    setText('tc-title-ko', col.titleKo || '')
+    renderLevels(passages, col.level, publishDate)
+    var rows = pickPreview(col.paragraphs, col.translation)
+    var wrap = document.getElementById('tc-preview')
+    clearChildren(wrap)
+    for (var i = 0; i < rows.length; i++) {
+      var row = document.createElement('div')
+      row.className = 'today-column-row'
+      var en = document.createElement('p')
+      en.className = 'en'
+      en.textContent = rows[i].en
+      var ko = document.createElement('p')
+      ko.className = 'ko'
+      ko.textContent = rows[i].ko
+      row.appendChild(en)
+      row.appendChild(ko)
+      wrap.appendChild(row)
+    }
+    section.classList.remove('hidden')
+  }
+
+  // jsDelivr 가 origin (GitHub) sync race 로 첫 fetch 에 가끔 'Failed to fetch ...'
+  // 문자열을 200 응답으로 줄 때가 있음. r.json() throw → 재시도 1회 + backoff.
+  function fetchJson(url, attempt) {
+    attempt = attempt || 0
+    return fetch(url, { cache: 'no-cache' }).then(function (r) {
+      if (!r.ok) throw new Error('HTTP ' + r.status)
+      return r.text().then(function (t) {
+        try { return JSON.parse(t) }
+        catch (e) {
+          if (attempt < 1) {
+            return new Promise(function (resolve) { setTimeout(resolve, 1200) })
+              .then(function () { return fetchJson(url, attempt + 1) })
+          }
+          // 디버그용 — DevTools 열면 원인 확인 가능. 사용자 페이지엔 영향 X.
+          if (window.console) console.warn('[today-column] JSON parse failed:', url, t.slice(0, 120))
+          throw e
+        }
+      })
+    })
+  }
+
+  function load() {
+    var pickedPublishDate = ''
+    fetchJson(CDN + '/index.json')
+      .then(function (idx) {
+        if (!idx || !idx.columns || !idx.columns.length) return
+        var today = todayStr()
+        var entry = null
+        for (var i = 0; i < idx.columns.length; i++) {
+          if (idx.columns[i].publishDate && idx.columns[i].publishDate <= today) {
+            entry = idx.columns[i]
+            break
+          }
+        }
+        if (!entry) {
+          if (window.console) console.info('[today-column] no entry with publishDate <= ' + today)
+          return
+        }
+        pickedPublishDate = entry.publishDate
+        return fetchJson(CDN + '/' + entry.file)
+      })
+      .then(function (passages) {
+        if (!passages || !passages.length) return
+        // 초기 노출 레벨: Lv.3 우선, 없으면 가장 가까운 레벨
+        var pick = findByLevel(passages, 3)
+        if (!pick) {
+          var best = passages[0]
+          for (var j = 1; j < passages.length; j++) {
+            if (Math.abs(passages[j].level - 3) < Math.abs(best.level - 3)) best = passages[j]
+          }
+          pick = best
+        }
+        if (pick) renderPassage(pick, passages, pickedPublishDate)
+      })
+      .catch(function (err) {
+        if (window.console) console.warn('[today-column] load failed:', err && err.message)
+      })
+  }
+
+  load()
+})()
 </script>
 
 </body>

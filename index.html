@@ -81,7 +81,16 @@ section { padding: 80px 24px; }
   font-weight: 900; line-height: 1.18; letter-spacing: -0.02em;
   color: var(--ink); margin-bottom: 20px;
 }
-.hero h1 .accent { color: var(--terra); font-style: italic; font-family: 'Lora', serif; font-weight: 700; }
+.hero h1 .accent { color: var(--terra); font-family: 'Noto Serif KR', serif; font-weight: 900; position: relative; }
+.hero h1 .accent::after {
+  content: '';
+  position: absolute; left: 0; right: 0; bottom: -0.08em;
+  height: 0.12em;
+  background: linear-gradient(90deg, var(--terra) 0%, var(--gold) 100%);
+  opacity: 0.32;
+  border-radius: 4px;
+  z-index: -1;
+}
 .hero p.lead { font-size: clamp(16px, 2.3vw, 19px); color: var(--ink-soft); max-width: 580px; margin: 0 auto 40px; }
 .cta-row { display: inline-flex; gap: 12px; flex-wrap: wrap; justify-content: center; }
 .cta {
@@ -186,10 +195,10 @@ footer a:hover { color: var(--ink); text-decoration: underline; }
 <section class="hero" id="top">
   <div class="container">
     <img class="hero-icon" src="icon_512.png" alt="Lectio">
-    <h1 class="ko">단어 외우기에 지친 당신을 위한<br><span class="accent">읽기 영어</span></h1>
+    <h1 class="ko">영어가, <span class="accent">책이 되는</span> 시간</h1>
     <p class="lead ko">
-      Project Gutenberg 명작 480+권에 한국어 손번역을 입혔습니다.<br>
-      매일 아침 한 편의 영어 칼럼이 도착합니다.
+      Project Gutenberg 명작 480+권에 한국어 손번역.<br>
+      매일 아침, 한 편의 영어 칼럼.
     </p>
     <div class="cta-row">
       <a class="cta cta-coming" aria-disabled="true">📱 Play Store — 출시 준비 중</a>
